@@ -57,10 +57,10 @@ void UChunkProvider::AddCellToMeshData(int32 VertexIndex, FRuntimeMeshRenderable
 {
 	MeshData.Triangles.Add(VertexIndex);
 	MeshData.Triangles.Add(VertexIndex + 1);
-	MeshData.Triangles.Add(VertexIndex + ChunkSize + 1);
+	MeshData.Triangles.Add(VertexIndex + ChunkSize + 2);
 	MeshData.Triangles.Add(VertexIndex);
+	MeshData.Triangles.Add(VertexIndex + ChunkSize + 2);
 	MeshData.Triangles.Add(VertexIndex + ChunkSize + 1);
-	MeshData.Triangles.Add(VertexIndex + ChunkSize);
 }
 
 void UChunkProvider::Initialize_Implementation()
@@ -90,10 +90,14 @@ bool UChunkProvider::GetSectionMeshForLOD_Implementation(int32 LODIndex, int32 S
 {
 	check(SectionId == 0 && LODIndex == 0);
 
+	// Generating a square grid of (ChunkSize + 1) * (ChunkSize + 1) vertices
+	// The vertices will have height determined by some noise function
+	// Each 4 adjasent vertices will be connected into a cell (2 polygons)
+
 	// Add vertices and texture coordinates to MeshData
-	for (int32 X = 0; X < ChunkSize; X++)
+	for (int32 X = 0; X <= ChunkSize; X++)
 	{
-		for (int32 Y = 0; Y < ChunkSize; Y++)
+		for (int32 Y = 0; Y <= ChunkSize; Y++)
 		{
 			MeshData.Positions.Add(FVector(StartCoords.X + X * CellSize, StartCoords.Y + Y * CellSize, FMath::RandRange(0, MaxHeight)));
 			MeshData.TexCoords.Add(GetTextureCoordinates(X, Y));
@@ -104,8 +108,8 @@ bool UChunkProvider::GetSectionMeshForLOD_Implementation(int32 LODIndex, int32 S
 	for (int32 VertexIndex = 0; VertexIndex < MeshData.Positions.Num(); VertexIndex++)
 	{
 		// If the vertex is not on the top border or the right border of the terrain
-		if (VertexIndex % ChunkSize != ChunkSize - 1
-			&& VertexIndex / ChunkSize != ChunkSize - 1)
+		if (VertexIndex % (ChunkSize + 1) != ChunkSize
+			&& VertexIndex / (ChunkSize + 1) != ChunkSize)
 		{
 			AddCellToMeshData(VertexIndex, MeshData);
 		}

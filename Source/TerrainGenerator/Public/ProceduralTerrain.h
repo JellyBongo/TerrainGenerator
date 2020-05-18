@@ -37,7 +37,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	int32 RenderDistance = 2;
 
-	TSet<FVector2D> RenderedChunks;
+	TMap<FVector2D, URuntimeMeshComponent*> RenderedChunks;
 
 public:
 	AProceduralTerrain();
@@ -50,4 +50,5 @@ public:
 
 private:
 	TArray<FVector2D> GetStartCoordsForAdjacentChunks(const FVector& PlayerLocation) const;
+	bool ChunkIsFarFromPlayer(FVector& PlayerLocation, FVector2D& ChunkLocation) const;
 };
