@@ -7,12 +7,24 @@
 UChunkProvider::UChunkProvider()
 {
 	MaterialScale = 0.01f;
+	Noise = NewObject<UFastNoise>(this, "NoiseGenerator");
 }
 
 UMaterialInterface* UChunkProvider::GetDisplayMaterial() const
 {
 	FScopeLock Lock(&PropertySyncRoot);
 	return DisplayMaterial;
+}
+
+UFastNoise* UChunkProvider::GetNoise() const
+{
+	FScopeLock Lock(&PropertySyncRoot);
+	return Noise;
+}
+
+void UChunkProvider::SetSeed(int32 InSeed)
+{
+	Seed = InSeed;
 }
 
 void UChunkProvider::SetChunkSize(int32 InChunkSize)
@@ -99,7 +111,10 @@ bool UChunkProvider::GetSectionMeshForLOD_Implementation(int32 LODIndex, int32 S
 	{
 		for (int32 Y = 0; Y <= ChunkSize; Y++)
 		{
-			MeshData.Positions.Add(FVector(StartCoords.X + X * CellSize, StartCoords.Y + Y * CellSize, FMath::RandRange(0, MaxHeight)));
+			int32 VertexX = StartCoords.X + X * CellSize;
+			int32 VertexY = StartCoords.Y + Y * CellSize;
+			int32 VertexZ = (Noise->GetNoise(VertexX, VertexY) + 1) * MaxHeight / 2;
+			MeshData.Positions.Add(FVector(VertexX, VertexY, VertexZ));
 			MeshData.TexCoords.Add(GetTextureCoordinates(X, Y));
 		}
 	}

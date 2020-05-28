@@ -8,7 +8,7 @@ public class TerrainGenerator : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RuntimeMeshComponent" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RuntimeMeshComponent", "UnrealFastNoisePlugin" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

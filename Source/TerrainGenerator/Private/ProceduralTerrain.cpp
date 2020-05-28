@@ -14,11 +14,6 @@ AProceduralTerrain::AProceduralTerrain() : Material(nullptr)
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-void AProceduralTerrain::BeginPlay()
-{
-	Super::BeginPlay();
-
-}
 
 int32 FloorByGrid(float Location, int32 Grid)
 {
@@ -55,13 +50,8 @@ bool AProceduralTerrain::ChunkIsFarFromPlayer(FVector& PlayerLocation, FVector2D
 	return FMath::Abs(XDiff) > MaxDistance || FMath::Abs(YDiff) > MaxDistance;
 }
 
-void AProceduralTerrain::Tick(float DeltaTime)
+void AProceduralTerrain::DestroyFarawayChunks(FVector& PlayerLocation)
 {
-	Super::Tick(DeltaTime);
-	
-	FVector PlayerLocation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
-
-	// Destroying chunks that are far from player
 	TSet<FVector2D> KeysToRemove;
 	for (TPair<FVector2D, URuntimeMeshComponent*> Chunk : RenderedChunks)
 	{
@@ -71,15 +61,17 @@ void AProceduralTerrain::Tick(float DeltaTime)
 			Chunk.Value->DestroyComponent(true);
 		}
 	}
-	
+
 	for (FVector2D Key : KeysToRemove)
 	{
 		RenderedChunks.Remove(Key);
 	}
+}
 
-	// Rendering chunks nearby
+void AProceduralTerrain::SpawnNearbyChunks(FVector& PlayerLocation)
+{
 	TArray<FVector2D> StartCoordsOfAdjacentChunks = GetStartCoordsForAdjacentChunks(PlayerLocation);
-
+	
 	for (FVector2D& StartCoords : StartCoordsOfAdjacentChunks)
 	{
 		if (!RenderedChunks.Contains(StartCoords))
@@ -87,12 +79,18 @@ void AProceduralTerrain::Tick(float DeltaTime)
 			UChunkProvider* ChunkProvider = NewObject<UChunkProvider>(this);
 			if (ChunkProvider)
 			{
+				ChunkProvider->SetSeed(Seed);
 				ChunkProvider->SetDisplayMaterial(Material);
 				ChunkProvider->SetChunkSize(ChunkSize);
 				ChunkProvider->SetCellSize(CellSize);
 				ChunkProvider->SetMaxHeight(MaxHeight);
 				ChunkProvider->SetStartCoords(StartCoords);
 				ChunkProvider->CalculateBounds();
+				
+				UFastNoise* ChunkNoise = ChunkProvider->GetNoise();
+				ChunkNoise->SetNoiseType(ENoiseType::SimplexFractal);
+				ChunkNoise->SetSeed(Seed);
+				ChunkNoise->SetFrequency(0.00002);
 
 				URuntimeMeshComponent* Chunk = NewObject<URuntimeMeshComponent>(this);
 				Chunk->RegisterComponent();
@@ -101,6 +99,21 @@ void AProceduralTerrain::Tick(float DeltaTime)
 				Chunk->Initialize(ChunkProvider);
 				RenderedChunks.Emplace(StartCoords, Chunk);
 			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Chunk provider was not initialized"));
+			}
 		}
 	}
+}
+
+void AProceduralTerrain::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	FVector PlayerLocation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
+
+	DestroyFarawayChunks(PlayerLocation);
+
+	SpawnNearbyChunks(PlayerLocation);
 }

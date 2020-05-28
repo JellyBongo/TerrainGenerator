@@ -12,5 +12,11 @@
 				"RuntimeMeshComponent"
 			]
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "UnrealFastNoisePlugin",
+			"Enabled": true
+		}
 	]
 }

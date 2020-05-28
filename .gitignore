@@ -14,3 +14,6 @@ Saved
 *.xcworkspace
 /Plugins/RuntimeMeshComponent
 /Content/StarterContent
+/Build
+/Plugins/UnrealFastNoise/Source/UnrealFastNoisePlugin
+/Plugins/UnrealFastNoise

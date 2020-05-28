@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "RuntimeMeshProvider.h"
+#include "FastNoise.h"
 #include "ChunkProvider.generated.h"
+
 
 /**
  * 
@@ -19,6 +21,13 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintGetter = GetDisplayMaterial, BlueprintSetter = SetDisplayMaterial)
 	UMaterialInterface* DisplayMaterial;
+
+	/** FastNoise module */
+	UFastNoise* Noise;
+
+	/** Random seed for the generator */
+	UPROPERTY(EditAnywhere)
+	int32 Seed = 1337;
 
 	/** Number of vertices in a side of one chunk
 	* The chunk itself contains ChunkSize * ChunkSize vertices
@@ -43,10 +52,16 @@ private:
 public:
 
 	UFUNCTION(BlueprintCallable)
+	UFastNoise* GetNoise() const;
+
+	UFUNCTION(BlueprintCallable)
 	void SetDisplayMaterial(UMaterialInterface* InMaterial);
 
 	UFUNCTION(BlueprintCallable)
 	UMaterialInterface* GetDisplayMaterial() const;
+
+	UFUNCTION(BlueprintCallable)
+	void SetSeed(int32 InSeed);
 
 	UFUNCTION(BlueprintCallable)
 	void SetChunkSize(int32 InChunkSize);

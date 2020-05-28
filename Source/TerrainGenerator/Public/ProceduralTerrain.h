@@ -19,6 +19,10 @@ public:
 	UMaterialInterface* Material;
 
 private:
+	/** Random seed for the generator */
+	UPROPERTY(EditAnywhere)
+	int32 Seed = 1337;
+
 	/** Number of vertices in a side of one chunk
 	* The chunk itself contains ChunkSize * ChunkSize vertices
 	*/
@@ -41,14 +45,22 @@ private:
 
 public:
 	AProceduralTerrain();
-
-	void BeginPlay() override;
 	
-	// Called every frame
+	/** Called every frame */
 	virtual void Tick(float DeltaTime) override;
-	//void OnConstruction(const FTransform& Transform) override;
 
 private:
+	/** Get coordinates of chunks that are within RenderDistance from player */
 	TArray<FVector2D> GetStartCoordsForAdjacentChunks(const FVector& PlayerLocation) const;
+
+	/** Returns true if chunk's location is further than RenderDistance from player */
 	bool ChunkIsFarFromPlayer(FVector& PlayerLocation, FVector2D& ChunkLocation) const;
+
+	/** Destroy chunks that are further than RenderDistance from player */
+	void DestroyFarawayChunks(FVector& PlayerLocation);
+
+	/** Spawn chunks within RenderDistance from player 
+	*	Chunks that are already rendered will not be respawned	
+	*/
+	void SpawnNearbyChunks(FVector& PlayerLocation);
 };
