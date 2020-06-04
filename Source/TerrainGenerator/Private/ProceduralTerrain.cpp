@@ -5,7 +5,6 @@
 #include "ChunkProvider.h"
 #include "Providers/RuntimeMeshProviderBox.h"
 #include "Providers/RuntimeMeshProviderCollision.h"
-//#include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/CollisionProfile.h"
 
@@ -14,14 +13,13 @@ AProceduralTerrain::AProceduralTerrain() : Material(nullptr)
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-
 int32 FloorByGrid(float Location, int32 Grid)
 {
 	int SnappedLocation = FMath::GridSnap(Location, Grid);
 	return SnappedLocation > Location ? (SnappedLocation - Grid) : SnappedLocation;
 }
 
-TArray<FVector2D> AProceduralTerrain::GetStartCoordsForAdjacentChunks(const FVector& PlayerLocation) const
+TArray<FVector2D> AProceduralTerrain::GetStartCoordsForNearbyChunks(const FVector& PlayerLocation) const
 {
 	TArray<FVector2D> StartCoords;
 	int32 ChunkSizeInWorldUnits = ChunkSize * CellSize;
@@ -37,6 +35,27 @@ TArray<FVector2D> AProceduralTerrain::GetStartCoordsForAdjacentChunks(const FVec
 	}
 
 	return StartCoords;
+}
+
+TArray<FVector2D> AProceduralTerrain::GetChunkCoordsForCollisionsSetup(const FVector& PlayerLocation) const
+{
+	int32 ChunkSizeInWorldUnits = ChunkSize * CellSize;
+	int32 XFloored = FloorByGrid(PlayerLocation.X, ChunkSizeInWorldUnits);
+	int32 YFloored = FloorByGrid(PlayerLocation.Y, ChunkSizeInWorldUnits);
+	
+	TArray<FVector2D> ChunkCoords = {
+		FVector2D(XFloored, YFloored),
+		FVector2D(XFloored + ChunkSizeInWorldUnits, YFloored),
+		FVector2D(XFloored - ChunkSizeInWorldUnits, YFloored),
+		FVector2D(XFloored, YFloored + ChunkSizeInWorldUnits),
+		FVector2D(XFloored, YFloored - ChunkSizeInWorldUnits),
+		FVector2D(XFloored + ChunkSizeInWorldUnits, YFloored + ChunkSizeInWorldUnits),
+		FVector2D(XFloored + ChunkSizeInWorldUnits, YFloored - ChunkSizeInWorldUnits),
+		FVector2D(XFloored - ChunkSizeInWorldUnits, YFloored - ChunkSizeInWorldUnits),
+		FVector2D(XFloored - ChunkSizeInWorldUnits, YFloored + ChunkSizeInWorldUnits)
+	};
+
+	return ChunkCoords;
 }
 
 bool AProceduralTerrain::ChunkIsFarFromPlayer(FVector& PlayerLocation, FVector2D& ChunkLocation) const
@@ -70,7 +89,7 @@ void AProceduralTerrain::DestroyFarawayChunks(FVector& PlayerLocation)
 
 void AProceduralTerrain::SpawnNearbyChunks(FVector& PlayerLocation)
 {
-	TArray<FVector2D> StartCoordsOfAdjacentChunks = GetStartCoordsForAdjacentChunks(PlayerLocation);
+	TArray<FVector2D> StartCoordsOfAdjacentChunks = GetStartCoordsForNearbyChunks(PlayerLocation);
 	
 	for (FVector2D& StartCoords : StartCoordsOfAdjacentChunks)
 	{
@@ -107,6 +126,21 @@ void AProceduralTerrain::SpawnNearbyChunks(FVector& PlayerLocation)
 	}
 }
 
+void AProceduralTerrain::SetupCollisions(FVector& PlayerLocation)
+{
+	TArray<FVector2D> ChunkCoordsToSetupCollisions = GetChunkCoordsForCollisionsSetup(PlayerLocation);
+	for (FVector2D ChunkCoord : ChunkCoordsToSetupCollisions)
+	{
+		if (!ChunksWithBuiltCollisions.Contains(ChunkCoord))
+		{
+			URuntimeMeshComponent* Chunk = RenderedChunks[ChunkCoord];
+			((UChunkProvider*)(Chunk->GetProvider()))->SetHasCollision(true);
+			Chunk->GetProvider()->MarkCollisionDirty();
+			ChunksWithBuiltCollisions.Emplace(ChunkCoord, Chunk);
+		}
+	}	
+}
+
 void AProceduralTerrain::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -116,4 +150,6 @@ void AProceduralTerrain::Tick(float DeltaTime)
 	DestroyFarawayChunks(PlayerLocation);
 
 	SpawnNearbyChunks(PlayerLocation);
+
+	SetupCollisions(PlayerLocation);
 }

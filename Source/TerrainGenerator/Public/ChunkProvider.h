@@ -49,13 +49,12 @@ private:
 	FBoxSphereBounds LocalBounds;
 	FVector2D StartCoords;
 
+	bool HasCollision = false;
+
 public:
 
 	UFUNCTION(BlueprintCallable)
 	UFastNoise* GetNoise() const;
-
-	UFUNCTION(BlueprintCallable)
-	void SetDisplayMaterial(UMaterialInterface* InMaterial);
 
 	UFUNCTION(BlueprintCallable)
 	UMaterialInterface* GetDisplayMaterial() const;
@@ -75,6 +74,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetStartCoords(FVector2D& InStartCoords);
 
+	UFUNCTION(BlueprintCallable)
+	void SetDisplayMaterial(UMaterialInterface* InMaterial);
+
+	UFUNCTION(BlueprintCallable)
+	void SetHasCollision(bool InHasCollision);
+
 	void CalculateBounds();
 
 protected:
@@ -88,9 +93,15 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void AddCellToMeshData(int32 VertexIndex, FRuntimeMeshRenderableMeshData& MeshData) const;
 
+	UFUNCTION(BlueprintCallable)
+		void AddCellToCollisionData(int32 VertexIndex, FRuntimeMeshCollisionData& CollisionData) const;
+
 protected:
 	void Initialize_Implementation() override;
 	FBoxSphereBounds GetBounds_Implementation() override;
 	bool GetSectionMeshForLOD_Implementation(int32 LODIndex, int32 SectionId, FRuntimeMeshRenderableMeshData& MeshData) override;
 	bool IsThreadSafe_Implementation() override;
+	FRuntimeMeshCollisionSettings GetCollisionSettings_Implementation() override;
+	bool HasCollisionMesh_Implementation() override;
+	bool GetCollisionMesh_Implementation(FRuntimeMeshCollisionData& CollisionData) override;
 };

@@ -42,7 +42,7 @@ private:
 	int32 RenderDistance = 2;
 
 	TMap<FVector2D, URuntimeMeshComponent*> RenderedChunks;
-
+	TMap<FVector2D, URuntimeMeshComponent*> ChunksWithBuiltCollisions;
 public:
 	AProceduralTerrain();
 	
@@ -51,7 +51,10 @@ public:
 
 private:
 	/** Get coordinates of chunks that are within RenderDistance from player */
-	TArray<FVector2D> GetStartCoordsForAdjacentChunks(const FVector& PlayerLocation) const;
+	TArray<FVector2D> GetStartCoordsForNearbyChunks(const FVector& PlayerLocation) const;
+
+	/** Get coordinates of chunks that need collisions to be set up */
+	TArray<FVector2D> GetChunkCoordsForCollisionsSetup(const FVector& PlayerLocation) const;
 
 	/** Returns true if chunk's location is further than RenderDistance from player */
 	bool ChunkIsFarFromPlayer(FVector& PlayerLocation, FVector2D& ChunkLocation) const;
@@ -63,4 +66,6 @@ private:
 	*	Chunks that are already rendered will not be respawned	
 	*/
 	void SpawnNearbyChunks(FVector& PlayerLocation);
+
+	void SetupCollisions(FVector& PlayerLocation);
 };
