@@ -1,13 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-
+//TODO: Smoothen borders
 
 #include "ChunkProvider.h"
 #include "Modifiers/RuntimeMeshModifierNormals.h"
 
 UChunkProvider::UChunkProvider()
 {
-	MaterialScale = 0.01f;
-	Noise = NewObject<UFastNoise>(this, "NoiseGenerator");
+	MaterialScale = 1.0f;
 }
 
 UMaterialInterface* UChunkProvider::GetDisplayMaterial() const
@@ -16,15 +15,10 @@ UMaterialInterface* UChunkProvider::GetDisplayMaterial() const
 	return DisplayMaterial;
 }
 
-UFastNoise* UChunkProvider::GetNoise() const
-{
-	FScopeLock Lock(&PropertySyncRoot);
-	return Noise;
-}
-
 void UChunkProvider::SetSeed(int32 InSeed)
 {
 	Seed = InSeed;
+	BiomeMapper->SetSeed(Seed);
 }
 
 void UChunkProvider::SetChunkSize(int32 InChunkSize)
@@ -58,6 +52,11 @@ void UChunkProvider::SetHasCollision(bool InHasCollision)
 	HasCollision = InHasCollision;
 }
 
+void UChunkProvider::SetBiomeMapper(UBiomeMapper* InBiomeMapper)
+{
+	BiomeMapper = InBiomeMapper;
+}
+
 void UChunkProvider::CalculateBounds()
 {
 	int32 MaxCoordinateValue = ChunkSize * CellSize;
@@ -88,6 +87,7 @@ void UChunkProvider::AddCellToCollisionData(int32 VertexIndex, FRuntimeMeshColli
 
 void UChunkProvider::Initialize_Implementation()
 {
+	// Some routine code to make RMC working
 	SetupMaterialSlot(0, FName("Material"), DisplayMaterial);
 	TArray<FRuntimeMeshLODProperties> LODs;
 	FRuntimeMeshLODProperties LODProperties;
@@ -96,7 +96,7 @@ void UChunkProvider::Initialize_Implementation()
 	ConfigureLODs(LODs);
 
 	FRuntimeMeshSectionProperties Properties;
-	Properties.bCastsShadow = true;
+	Properties.bCastsShadow = false;
 	Properties.bIsVisible = true;
 	Properties.MaterialSlot = 0;
 	Properties.bWants32BitIndices = true;
@@ -126,7 +126,7 @@ bool UChunkProvider::GetSectionMeshForLOD_Implementation(int32 LODIndex, int32 S
 		{
 			int32 VertexX = StartCoords.X + X * CellSize;
 			int32 VertexY = StartCoords.Y + Y * CellSize;
-			int32 VertexZ = (Noise->GetNoise(VertexX, VertexY) + 1) * MaxHeight / 2;
+			int32 VertexZ = BiomeMapper->GetBiomeAtPoint(VertexX, VertexY)->GetHeight(VertexX, VertexY);
 			MeshData.Positions.Add(FVector(VertexX, VertexY, VertexZ));
 			MeshData.TexCoords.Add(GetTextureCoordinates(X, Y));
 		}
@@ -175,7 +175,8 @@ bool UChunkProvider::GetCollisionMesh_Implementation(FRuntimeMeshCollisionData& 
 		{
 			int32 VertexX = StartCoords.X + X * CellSize;
 			int32 VertexY = StartCoords.Y + Y * CellSize;
-			int32 VertexZ = (Noise->GetNoise(VertexX, VertexY) + 1) * MaxHeight / 2;
+			
+			int32 VertexZ = BiomeMapper->GetBiomeAtPoint(VertexX, VertexY)->GetHeight(VertexX, VertexY);
 			CollisionData.Vertices.Add(FVector(VertexX, VertexY, VertexZ));
 		}
 	}

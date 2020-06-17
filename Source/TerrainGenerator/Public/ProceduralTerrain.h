@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "RuntimeMeshActor.h"
+#include "BiomeMapper.h"
 #include "ProceduralTerrain.generated.h"
 
 /**
@@ -43,11 +44,16 @@ private:
 
 	TMap<FVector2D, URuntimeMeshComponent*> RenderedChunks;
 	TMap<FVector2D, URuntimeMeshComponent*> ChunksWithBuiltCollisions;
+
+	UBiomeMapper* BiomeMapper;
 public:
 	AProceduralTerrain();
 	
 	/** Called every frame */
-	virtual void Tick(float DeltaTime) override;
+	void Tick(float DeltaTime) override;
+
+	/** Called when the game begins */
+	void BeginPlay() override;
 
 private:
 	/** Get coordinates of chunks that are within RenderDistance from player */
@@ -67,5 +73,6 @@ private:
 	*/
 	void SpawnNearbyChunks(FVector& PlayerLocation);
 
+	/** Set up collisions for the current player location*/
 	void SetupCollisions(FVector& PlayerLocation);
 };

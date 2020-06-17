@@ -16,6 +16,7 @@ AProceduralTerrain::AProceduralTerrain() : Material(nullptr)
 int32 FloorByGrid(float Location, int32 Grid)
 {
 	int SnappedLocation = FMath::GridSnap(Location, Grid);
+	// We need to snap location to the lower value of the grid so subtract 1 grid cell if it's snapped to the higher value
 	return SnappedLocation > Location ? (SnappedLocation - Grid) : SnappedLocation;
 }
 
@@ -89,15 +90,18 @@ void AProceduralTerrain::DestroyFarawayChunks(FVector& PlayerLocation)
 
 void AProceduralTerrain::SpawnNearbyChunks(FVector& PlayerLocation)
 {
-	TArray<FVector2D> StartCoordsOfAdjacentChunks = GetStartCoordsForNearbyChunks(PlayerLocation);
+	TArray<FVector2D> StartCoordsOfNearbyChunks = GetStartCoordsForNearbyChunks(PlayerLocation);
 	
-	for (FVector2D& StartCoords : StartCoordsOfAdjacentChunks)
+	// Create a provider and component for each nearby chunk that is not constructed yet
+	for (FVector2D& StartCoords : StartCoordsOfNearbyChunks)
 	{
 		if (!RenderedChunks.Contains(StartCoords))
 		{
 			UChunkProvider* ChunkProvider = NewObject<UChunkProvider>(this);
 			if (ChunkProvider)
 			{
+				ChunkProvider->SetBiomeMapper(BiomeMapper);
+
 				ChunkProvider->SetSeed(Seed);
 				ChunkProvider->SetDisplayMaterial(Material);
 				ChunkProvider->SetChunkSize(ChunkSize);
@@ -105,11 +109,6 @@ void AProceduralTerrain::SpawnNearbyChunks(FVector& PlayerLocation)
 				ChunkProvider->SetMaxHeight(MaxHeight);
 				ChunkProvider->SetStartCoords(StartCoords);
 				ChunkProvider->CalculateBounds();
-				
-				UFastNoise* ChunkNoise = ChunkProvider->GetNoise();
-				ChunkNoise->SetNoiseType(ENoiseType::SimplexFractal);
-				ChunkNoise->SetSeed(Seed);
-				ChunkNoise->SetFrequency(0.00002);
 
 				URuntimeMeshComponent* Chunk = NewObject<URuntimeMeshComponent>(this);
 				Chunk->RegisterComponent();
@@ -129,15 +128,40 @@ void AProceduralTerrain::SpawnNearbyChunks(FVector& PlayerLocation)
 void AProceduralTerrain::SetupCollisions(FVector& PlayerLocation)
 {
 	TArray<FVector2D> ChunkCoordsToSetupCollisions = GetChunkCoordsForCollisionsSetup(PlayerLocation);
+	TArray<FVector2D> ChunksToDestroyCollisions;
+
+	// For each chunk with built collisions
+	// Destroy collision mesh if the chunk doesn't need it anymore
+	// Exclude the chunk from ChunkCoordsToSetupCollisions if it already has collision mesh
+	for (TPair<FVector2D, URuntimeMeshComponent*> Kv : ChunksWithBuiltCollisions)
+	{
+		FVector2D& ChunkCoords = Kv.Key;
+		URuntimeMeshComponent* Chunk = Kv.Value;
+		if (!ChunkCoordsToSetupCollisions.Contains(ChunkCoords))
+		{
+			((UChunkProvider*)(Chunk->GetProvider()))->SetHasCollision(false);
+			Chunk->GetProvider()->MarkCollisionDirty();
+			ChunksToDestroyCollisions.Add(ChunkCoords);
+		}
+		else
+		{
+			ChunkCoordsToSetupCollisions.Remove(ChunkCoords);
+		}
+	}
+	
+	// Clean the hashmap
+	for (FVector2D Coords : ChunksToDestroyCollisions)
+	{
+		ChunksWithBuiltCollisions.Remove(Coords);
+	}
+
+	// Setup necessary collision meshes
 	for (FVector2D ChunkCoord : ChunkCoordsToSetupCollisions)
 	{
-		if (!ChunksWithBuiltCollisions.Contains(ChunkCoord))
-		{
-			URuntimeMeshComponent* Chunk = RenderedChunks[ChunkCoord];
-			((UChunkProvider*)(Chunk->GetProvider()))->SetHasCollision(true);
-			Chunk->GetProvider()->MarkCollisionDirty();
-			ChunksWithBuiltCollisions.Emplace(ChunkCoord, Chunk);
-		}
+		URuntimeMeshComponent* Chunk = RenderedChunks[ChunkCoord];
+		((UChunkProvider*)(Chunk->GetProvider()))->SetHasCollision(true);
+		Chunk->GetProvider()->MarkCollisionDirty();
+		ChunksWithBuiltCollisions.Emplace(ChunkCoord, Chunk);
 	}	
 }
 
@@ -152,4 +176,12 @@ void AProceduralTerrain::Tick(float DeltaTime)
 	SpawnNearbyChunks(PlayerLocation);
 
 	SetupCollisions(PlayerLocation);
+}
+
+void AProceduralTerrain::BeginPlay()
+{
+	Super::BeginPlay();
+	BiomeMapper = NewObject<UBiomeMapper>(this, "BiomeMapper");
+	BiomeMapper->SetSeed(Seed);
+	BiomeMapper->SetMaxHeight(MaxHeight);
 }
